@@ -249,6 +249,10 @@ class MultiLabelMultiHeadLAATV2(MultiLabelMultiHeadLAAT):
             if self.training:
                 alpha *= (1 - self.att_dropout_rate)
 
+        # Store attention weights if requested (does not change checkpoint)
+        if getattr(self, '_return_attention', False):
+            self._last_alpha = alpha  # batch_size, label_count, seq_length, att_head
+
         m = contract('abd,aebc->aedc', h, alpha)
 
         if not hasattr(self, 'head_pooling') or self.head_pooling == "max":
