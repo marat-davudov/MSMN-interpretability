@@ -6,7 +6,6 @@ from model.text_encoder import TextEncoder
 from model.decoder import create_decoder
 from model.label_encoder import LabelEncoder
 from model.losses import loss_fn
-from evaluation import all_metrics
 from torch.optim import AdamW
 from transformers import (
     get_linear_schedule_with_warmup,

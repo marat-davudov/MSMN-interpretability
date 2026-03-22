@@ -1,46 +1,124 @@
-# ICD-MSMN
-The offical implementation of "Code Synonyms Do Matter: Multiple Synonyms Matching Network for Automatic ICD Coding" [ACL 2022]
+# MSMN Interpretability Demo
 
-# Environment
-All codes are tested under Python 3.7, PyTorch 1.7.0.
-Need to install opt_einsum for einsum calculations.
-At least 32GB GPU are needed for training MIMIC-III full setting.
+An interactive Streamlit demo for visualizing model interpretability of the MSMN (Multiple Synonyms Matching Network) model for automatic ICD coding. This project adapts code from the original [ICD-MSMN implementation](https://github.com/GanjinZero/ICD-MSMN) from the paper "Code Synonyms Do Matter: Multiple Synonyms Matching Network for Automatic ICD Coding" [ACL 2022].
 
-# Dataset
-We only put several samples for each dataset.
-One need to obtain licences to download MIMIC-III dataset.
-Once you obtain the MIMIC-III dataset, please follow [caml-mimic](https://github.com/jamesmullenbach/caml-mimic) to preprocess the dataset.
-You should obtain **train_full.csv**, **test_full.csv**, **dev_full.csv**, **train_50.csv**, **test_50.csv**, **dev_50.csv** after preprocessing.
-Please put them under **sample_data/mimic3**.
-Then you should use **preprocess/generate_data_new.ipynb** for generating json format dataset.
+## Features
 
-# Word embedding
-Please download [word2vec_sg0_100.model](https://github.com/aehrc/LAAT/blob/master/data/embeddings/word2vec_sg0_100.model) from LAAT.
-You need to change the path of word embedding.
+- 🔍 **Dual Interpretability Methods**: View both attention scores and Integrated Gradients side-by-side
+- 🎨 **Color-coded Visualization**: Highlighting for attention, and IG
+- 🎯 **Top-K Filtering**: Focus on the most important tokens with configurable top-K selection
+- 🏥 **ICD Code Predictions**: Predict and explore multiple ICD codes for medical notes
 
-# Use our code
-MIMIC-III Full (1 GPU):
-```
-CUDA_VISIBLE_DEVICES=0 python main.py --n_gpu 1 --version mimic3 --combiner lstm --rnn_dim 256 --num_layers 2 --decoder MultiLabelMultiHeadLAATV2 --attention_head 4 --attention_dim 512 --learning_rate 5e-4 --train_epoch 20 --batch_size 2 --gradient_accumulation_steps 8 --xavier --main_code_loss_weight 0.0 --rdrop_alpha 5.0 --est_cls 1  --term_count 4  --sort_method random --word_embedding_path word_embedding_path
-```
+## Prerequisites
 
-MIMIC-III Full (8 GPUs):
-```
-NCCL_IB_DISABLE=1 CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 python -m torch.distributed.launch --nproc_per_node 8 --master_port=1212 --use_env  main.py --n_gpu 8 --version mimic3 --combiner lstm --rnn_dim 256 --num_layers 2 --decoder MultiLabelMultiHeadLAATV2 --attention_head 4 --attention_dim 512 --learning_rate 5e-4 --train_epoch 20 --batch_size 2 --gradient_accumulation_steps 1 --xavier --main_code_loss_weight 0.0 --rdrop_alpha 5.0 --est_cls 1  --term_count 4  --sort_method random --word_embedding_path word_embedding_path
-```
+- Python 3.12+
+- [Poetry](https://python-poetry.org/docs/#installation) for dependency management
+- Access to MIMIC-III dataset (for full functionality)
 
-MIMIC-III 50:
-```
-CUDA_VISIBLE_DEVICES=0 python main.py --version mimic3-50 --combiner lstm --rnn_dim 512 --num_layers 1 --decoder MultiLabelMultiHeadLAATV2 --attention_head 8 --attention_dim 512 --learning_rate 5e-4 --train_epoch 20 --batch_size 16 --gradient_accumulation_steps 1 --xavier --main_code_loss_weight 0.0 --rdrop_alpha 5.0 --est_cls 1 --term_count 8 --word_embedding_path word_embedding_path
+## Dataset
+
+This repository includes **sample data only** for demonstration purposes, taken from the original author's repo. To use the full MIMIC-III dataset:
+
+1. Obtain a license and download the [MIMIC-III dataset](https://mimic.physionet.org/)
+2. Follow the preprocessing instructions from [caml-mimic](https://github.com/jamesmullenbach/caml-mimic)
+3. Place the generated JSON files (`mimic3-50_train.json`, `mimic3-50_dev.json`, `mimic3-50_test.json`) in `sample_data/mimic3/`
+
+## Setup Instructions
+
+### 1. Install Dependencies
+
+```bash
+# Install dependencies using Poetry
+poetry install
 ```
 
-# Evaluate checkpoints
-```
-python eval_model.py MODEL_CHECKPOINT
-```
-[mimic3 checkpoint](https://drive.google.com/file/d/1Ru9AM3FJuBVWSvPDUV13vWhWDzFw_qAD/view?usp=sharing)
+### 2. Download Required Files
 
-[mimic3-50 checkpoint](https://drive.google.com/file/d/18Ny2R9WLWWa2UpyReaBn-zoSb1Uga9yX/view?usp=sharing)
+#### Word Embeddings
+Download the word2vec model from LAAT:
+```bash
+# Create directories
+mkdir -p checkpoints/embedding
+
+# Download word2vec model
+wget https://github.com/aehrc/LAAT/raw/master/data/embeddings/word2vec_sg0_100.model \
+  -O checkpoints/embedding/word2vec_sg0_100.model
+```
+
+Or download manually from [here](https://github.com/aehrc/LAAT/blob/master/data/embeddings/word2vec_sg0_100.model) and place in `checkpoints/embedding/`.
+
+#### Model Checkpoint
+Download the pre-trained MIMIC-III-50 checkpoint:
+```bash
+# Create directories
+mkdir -p checkpoints/MSMN
+
+# Download from Google Drive (manual download required)
+# Visit: https://drive.google.com/file/d/18Ny2R9WLWWa2UpyReaBn-zoSb1Uga9yX/view?usp=sharing
+# Save as: checkpoints/MSMN/mimic3-50.pth
+```
+
+### 3. Verify Configuration
+
+Check that paths in [constant.py](constant.py) match your setup:
+```python
+DATA_DIR = "./sample_data/"
+EMBEDDING_MODEL_PATH = "./checkpoints/embedding/word2vec_sg0_100.model"
+MSMN_MODEL_PATH = "./checkpoints/MSMN/mimic3-50.pth"
+```
+
+## Running the Demo
+
+### Start the Streamlit Application
+
+```bash
+# Activate the Poetry environment and run Streamlit
+poetry run streamlit run demo.py
+```
+
+The demo will open in your browser at `http://localhost:8501`.
+
+### Using the Demo
+
+1. **Enter Medical Text**: Paste or type a clinical note in the text area, or select a sample note from the dropdown
+2. **Run Inference**: Click "Run Inference" to predict ICD codes and compute interpretability scores
+3. **Explore Results**: 
+   - Select different predicted ICD codes from the dropdown
+   - Adjust the top-K slider to focus on the most important tokens
+   - Compare attention scores (left) with Integrated Gradients (right)
+4. **Interpret Colors**:
+   - **Attention (Green)**: Darker green = higher attention
+   - **IG (Red-Green)**: Red = negative attribution, White = neutral, Green = positive attribution
+
+## Configuration
+
+Key parameters in [constant.py](constant.py):
+- `IG_STEPS = 30`: Number of steps for Integrated Gradients computation
+- `THRESHOLD = 0.5`: Probability threshold for ICD code predictions
+
+## Project Structure
+
+```
+.
+├── demo.py                 # Main Streamlit application
+├── utils.py               # Utility functions (vocab, IG, highlighting)
+├── constant.py            # Configuration and paths
+├── model/                 # Neural network modules
+│   ├── icd_model.py      # Main MSMN model
+│   ├── decoder.py        # Attention decoder
+│   ├── text_encoder.py   # Text encoding
+│   └── ...
+├── sample_data/          # Sample MIMIC-III data
+└── checkpoints/          # Model weights and embeddings
+```
+
+## Technical Details
+
+- **Model Architecture**: LSTM encoder + Multi-head label attention decoder
+- **Interpretability**: 
+  - Attention weights from the decoder's multi-head attention mechanism
+  - Integrated Gradients computed using Captum library
+- **Framework**: PyTorch with Streamlit frontend
 
 # Citation
 ```
